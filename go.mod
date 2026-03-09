@@ -1,0 +1,3 @@
+module github.com/mini-dynamo
+
+go 1.26.1
