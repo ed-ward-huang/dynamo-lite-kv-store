@@ -25,11 +25,11 @@ Any node receiving a client request acts as the coordinator. It determines the r
 - Each key is versioned using a **Vector Clock** (e.g., `[NodeA: 1, NodeB: 1]`).
 - On read, if `R` nodes return different vector clocks that cannot be causally merged (they are concurrent), the system returns *all* conflicting versions to the client.
 
-### Hinted Handoff (Design Consideration)
+### Hinted Handoff
 The system is structured so that if a replica is unavailable, a fallback node could temporarily store the write and forward it once the original node recovers.
 
-### Gossip Protocol (Future Work)
-A gossip-based membership system could replace static node lists to allow dynamic cluster membership and decentralized failure detection.
+### Gossip Protocol
+A gossip-based membership system replaces static node lists to allow dynamic cluster membership and decentralized failure detection.
 
 ## How to Run
 
