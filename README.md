@@ -1,6 +1,36 @@
-# Mini Dynamo: A Distributed Key-Value Store
+Mini Dynamo is a distributed key-value store built in Go, implementing the core design principles of Amazon's Dynamo paper. It is designed to be highly available and partition-tolerant.
 
-Mini Dynamo is a fault-tolerant, highly available distributed key-value store inspired by Amazon's Dynamo architecture. It demonstrates core distributed systems concepts including Consistent Hashing, Vector Clocks, Gossip protocol, and Hinted Handoff to guarantee partition tolerance and eventual consistency.
+Key features currently implemented:
+- **Consistent Hashing**: Keys are statically partitioned across virtual nodes on a hash ring.
+- **Tunable Quorum Replication**: Reads and writes require `R` and `W` nodes respectively to acknowledge out of a preference list of `N` nodes.
+- **Vector Clocks**: Concurrent updates are preserved as siblings and resolved by the client, ensuring high availability during partitions.
+- **Coordinator Routing**: Any node can accept a request and act as a coordinator to route and aggregate responses from the hash ring.
+- **Hinted Handoff & Gossip**: Fully implemented failure detection via Gossip, and automated recovery utilizing fallback nodes with Hinted Handoff.
+
+## Architecture
+
+```mermaid
+graph TD
+    Client([Client]) -->|HTTP PUT / GET| Coordinator{Coordinator Node}
+    
+    subgraph Cluster Hash Ring
+        Coordinator -->|Write to Replica 1| Replica1[Node 8001]
+        Coordinator -->|Write to Replica 2| Replica2[Node 8002]
+        Coordinator -->|Write to Replica 3| Replica3[Node 8003]
+        Coordinator -.->|Hinted Handoff Fallback| Fallback[Node 8004]
+    end
+
+    subgraph Node Storage Engine
+        Replica1 --> KV1[(In-Memory Storage)]
+        Fallback --> HintStore[(Hint Storage)]
+    end
+    
+    subgraph Subsystems
+        HM[Handoff Manager] -.->|Replay Recovered Hints| Replica3
+        Gossip[Gossip Protocol] <-->|Periodic Health Checks| Replica1
+        Gossip <-->|Periodic Health Checks| Replica2
+    end
+```
 
 ## Architecture & How It Works
 
@@ -8,7 +38,7 @@ Nodes expose a lightweight HTTP API for inter-node communication and client acce
 
 ### Consistent Hash Ring
 - Data is partitioned across nodes using a **Consistent Hash Ring**. 
-- To distribute load evenly, each physical physical node uses multiple "Virtual Nodes" mapped onto the ring.
+- To distribute load evenly, each physical node uses multiple "Virtual Nodes" mapped onto the ring.
 - Keys are hashed (using SHA-256) and placed onto the closest node moving clockwise around the ring.
 
 ### Request Coordination
@@ -25,15 +55,15 @@ Any node receiving a client request acts as the coordinator. It determines the r
 - Each key is versioned using a **Vector Clock** (e.g., `[NodeA: 1, NodeB: 1]`).
 - On read, if `R` nodes return different vector clocks that cannot be causally merged (they are concurrent), the system returns *all* conflicting versions to the client.
 
-### Hinted Handoff
+### Hinted Handoff (Design Consideration)
 The system is structured so that if a replica is unavailable, a fallback node could temporarily store the write and forward it once the original node recovers.
 
-### Gossip Protocol
-A gossip-based membership system replaces static node lists to allow dynamic cluster membership and decentralized failure detection.
+### Gossip Protocol (Future Work)
+A gossip-based membership system could replace static node lists to allow dynamic cluster membership and decentralized failure detection.
 
 ## How to Run
 
-1. Start 3 independent nodes on different ports. Each node will join the hash ring and begin gossiping to find its peers.
+1. Start 3 independent nodes on different ports. Each node joins the hash ring using a predefined peer list.
 
 ```bash
 # Terminal 1
