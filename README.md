@@ -1,3 +1,5 @@
+## Mini DynamoDB Lite - Distributed Key Value Store
+
 Mini Dynamo is a distributed key-value store built in Go, implementing the core design principles of Amazon's Dynamo paper. It is designed to be highly available and partition-tolerant.
 
 Key features currently implemented:
